@@ -1,0 +1,510 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="description" content="Explore electrical products at Ravikiran Electrical, Paithan.">
+
+    <title>Products | Ravikiran Electrical</title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <style>
+        .catalogue {
+            max-width: 1150px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        .catalogue h1 {
+            text-align: center;
+            color: #c5c5c5;
+        }
+
+        .catalogue-tools {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin: 25px 0;
+        }
+
+        .catalogue-tools input,
+        .catalogue-tools select {
+            padding: 12px;
+            flex: 1;
+            min-width: 200px;
+            border-radius: 6px;
+            border: 1px solid #999;
+        }
+
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 22px;
+        }
+
+        .product-card {
+            background: #222;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 10px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .product-card img {
+            width: 100%;
+            height: 190px;
+            object-fit: contain;
+            background: #fff;
+            border-radius: 7px;
+        }
+
+        .product-card h3 {
+            color: #ddd;
+        }
+
+        .product-card p {
+            color: #bbb;
+        }
+
+        .product-card button {
+            background: #c0c0c0;
+            color: #111;
+            border: none;
+            padding: 11px 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .product-card button:hover {
+            background: #fff;
+        }
+
+        #statusMessage {
+            text-align: center;
+            color: #ddd;
+            margin: 25px 0;
+        }
+
+        .back-home {
+            text-decoration: none;
+        }
+
+        @media (max-width: 600px) {
+            .catalogue {
+                padding: 15px;
+                margin: 20px auto;
+            }
+
+            .catalogue-tools {
+                flex-direction: column;
+            }
+
+            .catalogue-tools input,
+            .catalogue-tools select {
+                width: 100%;
+                box-sizing: border-box;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- HEADER -->
+
+    <header class="admin-header">
+
+        <a href="index.html" class="admin-brand">
+
+            <span class="admin-logo">R⚡</span>
+
+            <div>
+                <h2>RAVIKIRAN</h2>
+                <p>ELECTRICAL</p>
+            </div>
+
+        </a>
+
+        <a href="index.html" class="back-home">
+            Back to Home
+        </a>
+
+    </header>
+
+
+    <!-- PRODUCTS SECTION -->
+
+    <main class="catalogue">
+
+        <h1>Our Products</h1>
+
+        <p style="text-align:center;color:#aaa;">
+            Quality electrical products for every need.
+        </p>
+
+
+        <!-- SEARCH AND CATEGORY FILTER -->
+
+        <div class="catalogue-tools">
+
+            <input
+                type="search"
+                id="searchInput"
+                placeholder="Search products..."
+                aria-label="Search products"
+            >
+
+            <select
+                id="categoryFilter"
+                aria-label="Filter products by category"
+            >
+
+                <option value="">All Categories</option>
+
+                <option value="Fans">Fans</option>
+
+                <option value="Lights">Lights</option>
+
+                <option value="Wires & Cables">Wires & Cables</option>
+
+                <option value="Switches">Switches</option>
+
+                <option value="MCB & Electrical Boards">
+                    MCB & Electrical Boards
+                </option>
+
+                <option value="Pipes & Fittings">
+                    Pipes & Fittings
+                </option>
+
+                <option value="Other electrical products">
+                    Other electrical products
+                </option>
+
+            </select>
+
+        </div>
+
+
+        <!-- STATUS MESSAGE -->
+
+        <p id="statusMessage">
+            Loading products...
+        </p>
+
+
+        <!-- PRODUCT CARDS -->
+
+        <div class="product-grid" id="productGrid"></div>
+
+    </main>
+
+
+    <!-- FOOTER -->
+
+    <footer style="text-align:center;padding:25px;color:#aaa;">
+
+        © <span id="year"></span> Ravikiran Electrical.
+        All Rights Reserved.
+
+    </footer>
+
+
+    <!-- FIREBASE AND JAVASCRIPT -->
+
+    <script type="module">
+
+        import { db } from "./firebase.js";
+
+        import {
+            collection,
+            getDocs
+        } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
+
+
+        // HTML ELEMENTS
+
+        const productGrid = document.getElementById("productGrid");
+
+        const statusMessage = document.getElementById("statusMessage");
+
+        const searchInput = document.getElementById("searchInput");
+
+        const categoryFilter = document.getElementById("categoryFilter");
+
+
+        // SHOP WHATSAPP NUMBER
+
+        const SHOP_PHONE = "917498198802";
+
+
+        // PRODUCT ARRAY
+
+        let products = [];
+
+
+        // COPYRIGHT YEAR
+
+        document.getElementById("year").textContent =
+            new Date().getFullYear();
+
+
+        // READ CATEGORY FROM HOMEPAGE URL
+
+        const urlParams = new URLSearchParams(window.location.search);
+
+        const categoryFromURL = urlParams.get("category");
+
+
+        // AUTOMATICALLY SELECT CATEGORY
+
+        if (categoryFromURL) {
+
+            const matchingOption = Array.from(categoryFilter.options)
+                .find(option => option.value === categoryFromURL);
+
+            if (matchingOption) {
+
+                categoryFilter.value = categoryFromURL;
+
+            }
+
+        }
+
+
+        // LOAD PRODUCTS FROM FIREBASE
+
+        async function loadProducts() {
+
+            try {
+
+                statusMessage.textContent = "Loading products...";
+
+                const snapshot = await getDocs(
+                    collection(db, "products")
+                );
+
+                products = snapshot.docs.map((item) => ({
+
+                    id: item.id,
+
+                    ...item.data()
+
+                }));
+
+                displayProducts();
+
+
+            } catch (error) {
+
+                console.error("Firebase product loading error:", error);
+
+                statusMessage.textContent =
+                    "Unable to load products. Please check your internet connection or Firebase settings.";
+
+                productGrid.innerHTML = "";
+
+            }
+
+        }
+
+
+        // DISPLAY AND FILTER PRODUCTS
+
+        function displayProducts() {
+
+            productGrid.innerHTML = "";
+
+
+            const searchText = searchInput.value
+                .trim()
+                .toLowerCase();
+
+
+            const selectedCategory = categoryFilter.value;
+
+
+            const filteredProducts = products.filter((product) => {
+
+
+                // SEARCH FILTER
+
+                const productName = (product.name || "").toLowerCase();
+
+                const productDescription =
+                    (product.description || "").toLowerCase();
+
+
+                const matchesSearch =
+                    productName.includes(searchText) ||
+                    productDescription.includes(searchText);
+
+
+                // CATEGORY FILTER
+
+                const matchesCategory =
+                    selectedCategory === "" ||
+                    product.category === selectedCategory;
+
+
+                return matchesSearch && matchesCategory;
+
+            });
+
+
+            // NO PRODUCTS FOUND
+
+            if (filteredProducts.length === 0) {
+
+                statusMessage.textContent =
+                    "No matching products found.";
+
+                return;
+
+            }
+
+
+            // PRODUCT COUNT
+
+            statusMessage.textContent =
+                filteredProducts.length + " product(s) available.";
+
+
+            // CREATE PRODUCT CARDS
+
+            filteredProducts.forEach((product) => {
+
+
+                const card = document.createElement("article");
+
+                card.className = "product-card";
+
+
+                // PRODUCT IMAGE
+
+                const image = document.createElement("img");
+
+                image.alt = product.name || "Electrical product";
+
+                image.loading = "lazy";
+
+
+                if (product.image) {
+
+                    image.src = product.image;
+
+                } else {
+
+                    image.style.display = "none";
+
+                }
+
+
+                image.addEventListener("error", () => {
+
+                    image.style.display = "none";
+
+                });
+
+
+                // PRODUCT NAME
+
+                const name = document.createElement("h3");
+
+                name.textContent =
+                    product.name || "Unnamed Product";
+
+
+                // PRODUCT CATEGORY
+
+                const category = document.createElement("p");
+
+                category.textContent =
+                    product.category || "";
+
+
+                // PRODUCT DESCRIPTION
+
+                const description = document.createElement("p");
+
+                description.textContent =
+                    product.description || "";
+
+
+                // WHATSAPP ENQUIRY BUTTON
+
+                const button = document.createElement("button");
+
+                button.textContent = "ENQUIRE ON WHATSAPP";
+
+                button.type = "button";
+
+
+                button.onclick = function () {
+
+                    const message =
+                        "Hello Ravikiran Electrical! I am interested in " +
+                        product.name +
+                        ". Please share more details.";
+
+
+                    const whatsappURL =
+                        "https://api.whatsapp.com/send?phone=" +
+                        SHOP_PHONE +
+                        "&text=" +
+                        encodeURIComponent(message);
+
+
+                    window.open(
+                        whatsappURL,
+                        "_blank",
+                        "noopener,noreferrer"
+                    );
+
+                };
+
+
+                // ADD ELEMENTS TO CARD
+
+                card.append(
+                    image,
+                    name,
+                    category,
+                    description,
+                    button
+                );
+
+
+                // ADD CARD TO PAGE
+
+                productGrid.appendChild(card);
+
+            });
+
+        }
+
+
+        // SEARCH EVENT
+
+        searchInput.addEventListener("input", displayProducts);
+
+
+        // CATEGORY DROPDOWN EVENT
+
+        categoryFilter.addEventListener("change", displayProducts);
+
+
+        // START LOADING PRODUCTS
+
+        loadProducts();
+
+    </script>
+
+</body>
+</html>
